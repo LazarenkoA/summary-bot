@@ -40,3 +40,5 @@ func main() {
 
 	b.Run()
 }
+
+// systemctl stop summarybot.service && mv -f /var/tmp/summary /home/artem/Summary/ && systemctl start summarybot.service && systemctl status summarybot.service

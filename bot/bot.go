@@ -97,11 +97,23 @@ func (sb *SummaryBot) Run() {
 
 		command := update.Message.Command()
 		switch strings.ToLower(command) {
-		case "summarytoday":
+		case "getthread":
+			if update.Message.ReplyToMessage != nil {
+				if err := sb.SendMessage(sb.getThreadMessages(update.Message.ReplyToMessage), update.Message.Chat.ID, 0, 0); err != nil {
+					sb.logger.Error(errors.Wrap(err, "send message").Error())
+				}
+				sb.DeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
+			} else {
+				sb.SendMessage("Данную команду необходимо использовать в ответ на любое сообщение из треда", update.Message.Chat.ID, update.Message.MessageID, time.Second*30)
+			}
 
+			continue
+
+		case "summarytoday":
 			sb.summary(sb.getMessages(update.Message.Chat.ID), update.Message.Chat.ID)
 			sb.DeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
 			continue
+
 		case "summarythread":
 			if update.Message.ReplyToMessage != nil {
 				sb.summary(sb.getThreadMessages(update.Message.ReplyToMessage), update.Message.Chat.ID)
@@ -178,10 +190,13 @@ func (sb *SummaryBot) storeMessage(msg *tgbotapi.Message) error {
 func (sb *SummaryBot) getDataForStore(msg *tgbotapi.Message) ([]byte, error) {
 	text := msg.Text
 	if msg.Document != nil {
-		text = "<document>"
+		text = fmt.Sprintf("<document> %s", msg.Caption)
 	}
 	if msg.Voice != nil {
 		text = "<voice>"
+	}
+	if msg.Sticker != nil {
+		text = "<sticker>"
 	}
 	if msg.Photo != nil {
 		text = fmt.Sprintf("<photo> %s", msg.Caption)
@@ -237,6 +252,10 @@ func (sb *SummaryBot) getThreadMessages(msg *tgbotapi.Message) string {
 	root := graph[msg.MessageID]
 	for m, ok := graph[msg.MessageID]; ok && m.parent != nil; m, ok = graph[m.parent.MessageID] {
 		root = m.parent
+	}
+
+	if root == nil {
+		return ""
 	}
 
 	return sb.printGraph(list, graph, root)
@@ -356,7 +375,7 @@ func (sb *SummaryBot) SendMessage(txt string, chatID int64, replyTo int, ttl tim
 	}
 
 	newmsg := tgbotapi.NewMessage(chatID, txt)
-	newmsg.ParseMode = "HTML"
+	newmsg.ParseMode = tgbotapi.ModeMarkdown
 	if replyTo > 0 {
 		newmsg.ReplyToMessageID = replyTo
 	}
