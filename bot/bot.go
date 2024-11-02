@@ -357,7 +357,7 @@ func (sb *SummaryBot) garbageCleaning() {
 			}
 
 			if time.Now().UTC().Sub(sdata.DateTime).Hours()/24 > storageDays {
-				sb.logger.Info(fmt.Sprintf("deleted message from DB, message data %v", sdata.DateTime))
+				sb.logger.Info(fmt.Sprintf("deleted message from DB, message date %v", sdata.DateTime))
 				if err := sb.adapter.DeleteMessageDataByTime(msgStoreKey, sdata.DateTime); err != nil {
 					sb.logger.Error(errors.Wrap(err, "DeleteMessageData error").Error())
 				}
