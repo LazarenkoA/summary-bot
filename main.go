@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
 	"summary-bot/bot"
@@ -9,10 +10,19 @@ import (
 )
 
 var (
-	redisaddr = os.Getenv("REDIS")
-	botToken  = os.Getenv("BotToken")
-	authKey   = os.Getenv("GIGA_AUTH_KEY")
+	redisaddr   string
+	botToken    string
+	gigaAuthKey string
+	deepseekKEY string
 )
+
+func init() {
+	_ = godotenv.Load()
+	redisaddr = os.Getenv("REDIS")
+	botToken = os.Getenv("BotToken")
+	gigaAuthKey = os.Getenv("GIGA_AUTH_KEY")
+	deepseekKEY = os.Getenv("DS_API_KEY")
+}
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -32,7 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	b, err := bot.NewSummaryBot(botToken, authKey, db)
+	b, err := bot.NewSummaryBot(botToken, deepseekKEY, db)
 	if err != nil {
 		logger.Error(fmt.Sprintf("bot create error: %v", err))
 		os.Exit(1)

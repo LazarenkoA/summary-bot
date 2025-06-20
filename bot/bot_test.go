@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	mock_bot "summary-bot/bot/mock"
+	"summary-bot/deepseek"
 	"testing"
 )
 
@@ -121,6 +122,23 @@ func Test_getMessages(t *testing.T) {
 		db.EXPECT().GetMessageData(msgStoreKey, gomock.Any(), gomock.Any()).Return(testData, nil)
 
 		result := sb.getMessages(-1002131081385)
-		assert.Equal(t, "LazarenkoAN: тест\nLazarenkoAN: ав\n\tLazarenkoAN: ууу\n\t\tLazarenkoAN: укук\n\t\t\tLazarenkoAN: ggg\n\t\tLazarenkoAN: gfgfggggg\n\t\t\tLazarenkoAN: cc\n\t\t\t\tLazarenkoAN: ccc\n\t\t\tLazarenkoAN: 222\nLazarenkoAN: ав\n\tLazarenkoAN: gfgfg\nLazarenkoAN: gfg\nLazarenkoAN: gg\nLazarenkoAN: s\n\tLazarenkoAN: www\nАртём Лазаренко: ewwwe\n\tАртём Лазаренко: sss\n", result)
+		assert.Equal(t, "1895:LazarenkoAN: тест\n1896:LazarenkoAN: ав\n\t1898:LazarenkoAN: ууу\n\t\t1899:LazarenkoAN: укук\n\t\t\t1901:LazarenkoAN: ggg\n\t\t1902:LazarenkoAN: gfgfggggg\n\t\t\t1929:LazarenkoAN: cc\n\t\t\t\t1930:LazarenkoAN: ccc\n\t\t\t1931:LazarenkoAN: 222\n1897:LazarenkoAN: ав\n\t1905:LazarenkoAN: gfgfg\n1903:LazarenkoAN: gfg\n1904:LazarenkoAN: gg\n1934:LazarenkoAN: s\n\t1936:LazarenkoAN: www\n1939:Артём Лазаренко: ewwwe\n\t1941:Артём Лазаренко: sss\n", result)
 	})
+}
+
+func Test_buildSummary(t *testing.T) {
+	sb := &SummaryBot{}
+	result := sb.buildSummary(&deepseek.Summary{
+		Topics: []deepseek.Topic{
+			{
+				Topic:         "Тестирование реакции дипсика на токсичные или агрессивные сообщения",
+				RootMessageId: "2121",
+			},
+			{
+				Topic:         "Обсуждение вложенных транзакций и их поддержки на уровне платформы",
+				RootMessageId: "332323",
+			},
+		},
+	}, "myChat")
+	assert.Equal(t, result, "- <a href=\"https://t.me/myChat/2121\">ref</a>: Тестирование реакции дипсика на токсичные или агрессивные сообщения\n- <a href=\"https://t.me/myChat/332323\">ref</a>: Обсуждение вложенных транзакций и их поддержки на уровне платформы\n")
 }

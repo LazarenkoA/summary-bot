@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_prompt(t *testing.T) {
-	prompt := new(Client).prompt()
-	assert.Equal(t, "Ты являешься экспертом в создании резюме перепискок из чата, в котором отражены основные моменты и ключевые детали\nСоздай краткое резюме переписки, о чем люди общались, можешь выделить основных акктивных участников.\n", prompt)
-}
-
 func Test_GetSummary(t *testing.T) {
 	cli, err := NewGigaClient(context.Background(), "MTZmODdlMmUtOTJiNy00NzNlLWE0ODItMWY2OWU4ZjhmNjNlOmUwYWI5NDgwLTFjZjUtNDYzMi1hZWIxLTM0OWE0MmE1NDJiNg==")
 	assert.NoError(t, err)

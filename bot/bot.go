@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"summary-bot/giga"
+	"summary-bot/deepseek"
 	"time"
 )
 
@@ -23,7 +23,7 @@ type IAdapter interface {
 	DeleteMessageData(key string, t time.Time, data []byte) error
 }
 type AI interface {
-	GetSummary(text string) (string, error)
+	GetSummary(text string) (*deepseek.Summary, error)
 }
 
 type SummaryBot struct {
@@ -50,7 +50,7 @@ const (
 	storageDays = 2
 )
 
-func NewSummaryBot(botToken, authKey string, adapter IAdapter) (*SummaryBot, error) {
+func NewSummaryBot(botToken, apiKey string, adapter IAdapter) (*SummaryBot, error) {
 	botAPI, err := tgbotapi.NewBotAPI(botToken)
 	// bot.Debug = true
 	if err != nil {
@@ -63,9 +63,9 @@ func NewSummaryBot(botToken, authKey string, adapter IAdapter) (*SummaryBot, err
 		logger:  slog.New(slog.NewTextHandler(os.Stdout, nil)).With("name", "bot"),
 	}
 
-	bot.ai, err = giga.NewGigaClient(context.Background(), authKey)
+	bot.ai, err = deepseek.NewDSClient(context.Background(), apiKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "create gigachat client error")
+		return nil, errors.Wrap(err, "create deepseek client error")
 	}
 
 	botAPI.Request(&tgbotapi.DeleteWebhookConfig{}) // на всякий случай удаляем веб хук
@@ -110,13 +110,13 @@ func (sb *SummaryBot) Run() {
 			continue
 
 		case "summarytoday":
-			sb.summary(sb.getMessages(update.Message.Chat.ID), update.Message.Chat.ID)
+			sb.summary(sb.getMessages(update.Message.Chat.ID), update.Message.Chat)
 			sb.DeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
 			continue
 
 		case "summarythread":
 			if update.Message.ReplyToMessage != nil {
-				sb.summary(sb.getThreadMessages(update.Message.ReplyToMessage), update.Message.Chat.ID)
+				sb.summary(sb.getThreadMessages(update.Message.ReplyToMessage), update.Message.Chat)
 			} else {
 				sb.SendMessage("Данную команду необходимо использовать в ответ на любое сообщение из треда", update.Message.Chat.ID, update.Message.MessageID, time.Second*30)
 			}
@@ -131,14 +131,26 @@ func (sb *SummaryBot) Run() {
 	}
 }
 
-func (sb *SummaryBot) summary(rawTxt string, chatID int64) {
+func (sb *SummaryBot) summary(rawTxt string, chat *tgbotapi.Chat) {
 	summary, err := sb.ai.GetSummary(rawTxt)
 	if err != nil {
 		sb.logger.Error(errors.Wrap(err, "get summary error").Error())
-		sb.SendMessage("ой, произошла ошибка. Нужно смотреть логи.", chatID, 0, time.Second*30)
+		_ = sb.SendMessage("ой, произошла ошибка. Нужно смотреть логи.", chat.ID, 0, time.Second*30)
 	} else {
-		sb.SendMessage(fmt.Sprintf("Краткий пересказ переписки:\n\n%s", summary), chatID, 0, 0)
+		_ = sb.SendMessage(fmt.Sprintf("Краткий пересказ переписки:\n\n%s", sb.buildSummary(summary, chat.UserName)), chat.ID, 0, 0)
 	}
+}
+
+func (sb *SummaryBot) buildSummary(summary *deepseek.Summary, chatName string) string {
+	if summary == nil {
+		return ""
+	}
+
+	b := strings.Builder{}
+	for _, topic := range summary.Topics {
+		b.WriteString(fmt.Sprintf("- <a href=\"https://t.me/%s/%s\">ref</a>: %s\n", chatName, topic.RootMessageId, topic.Topic))
+	}
+	return b.String()
 }
 
 func (sb *SummaryBot) editMessage(msg *tgbotapi.Message) error {
@@ -282,7 +294,7 @@ func (sb *SummaryBot) printGraphHelper(level int, result *strings.Builder, list 
 
 		delete(graph, msgID)
 
-		result.WriteString(fmt.Sprintf("%s%s: %s", strings.Repeat("\t", level), msg.User, msg.Txt))
+		result.WriteString(fmt.Sprintf("%s%d:%s: %s", strings.Repeat("\t", level), msg.MessageID, msg.User, msg.Txt))
 		result.WriteString("\n")
 
 		answersMsgID := make([]int, len(msg.answers))
@@ -375,7 +387,7 @@ func (sb *SummaryBot) SendMessage(txt string, chatID int64, replyTo int, ttl tim
 	}
 
 	newmsg := tgbotapi.NewMessage(chatID, txt)
-	newmsg.ParseMode = tgbotapi.ModeMarkdown
+	newmsg.ParseMode = tgbotapi.ModeHTML
 	if replyTo > 0 {
 		newmsg.ReplyToMessageID = replyTo
 	}
