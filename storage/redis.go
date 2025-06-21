@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"log/slog"
-	"os"
+	"summary-bot/utils"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -18,7 +18,7 @@ type Redis struct {
 func NewRedis(stringConnect string) (*Redis, error) {
 	r := &Redis{
 		pool:   initPool(stringConnect),
-		logger: slog.New(slog.NewTextHandler(os.Stdout, nil)).With("name", "redis"),
+		logger: utils.NewLogger().With("name", "redis"),
 	}
 	return r, r.pool.TestOnBorrow(r.pool.Get(), time.Now())
 }

@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/joho/godotenv"
-	"log/slog"
 	"os"
 	"summary-bot/bot"
 	"summary-bot/storage"
+	"summary-bot/utils"
 )
 
 var (
@@ -25,7 +25,7 @@ func init() {
 }
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := utils.NewLogger()
 
 	if botToken == "" {
 		logger.Error("в переменных окружения не задан BotToken")

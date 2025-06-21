@@ -7,9 +7,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"log/slog"
-	"os"
 	"strings"
 	"summary-bot/deepseek"
+	"summary-bot/utils"
 	"time"
 )
 
@@ -60,7 +60,7 @@ func NewSummaryBot(botToken, apiKey string, adapter IAdapter) (*SummaryBot, erro
 	bot := &SummaryBot{
 		botAPI:  botAPI,
 		adapter: adapter,
-		logger:  slog.New(slog.NewTextHandler(os.Stdout, nil)).With("name", "bot"),
+		logger:  utils.NewLogger().With("name", "bot"),
 	}
 
 	bot.ai, err = deepseek.NewDSClient(context.Background(), apiKey)
@@ -79,7 +79,7 @@ func NewSummaryBot(botToken, apiKey string, adapter IAdapter) (*SummaryBot, erro
 }
 
 func (sb *SummaryBot) Run() {
-	sb.logger.Info("bot running")
+	sb.logger.Debug("bot running")
 
 	go sb.garbageCleaning() // контроль и удаления старых записей в БД
 
@@ -126,7 +126,7 @@ func (sb *SummaryBot) Run() {
 		}
 
 		if err := sb.storeMessage(update.Message); err != nil {
-			sb.logger.Error(err.Error())
+			sb.logger.Error(errors.Wrap(err, "storeMessage error").Error())
 		}
 	}
 }
@@ -343,6 +343,8 @@ func (sb *SummaryBot) buildGraph(chatID int64) (resultList []int, resultMap map[
 			}
 		}
 	}
+
+	sb.logger.Debug(fmt.Sprintf("buildGraph: message count %d [from %s (UTC) to %s (UTC)]", len(resultList), startDay(time.Now().UTC()).Format(time.DateTime), endDay(time.Now().UTC()).Format(time.DateTime)), "chatID", chatID)
 
 	return
 }
